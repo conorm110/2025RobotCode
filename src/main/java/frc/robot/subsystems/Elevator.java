@@ -23,7 +23,15 @@ public class Elevator extends SubsystemBase {
   private TalonFX m_LeftMotor = new TalonFX(14);
   private TalonFX m_RightMotor = new TalonFX(15);
   private final MotionMagicVoltage m_mmReq = new MotionMagicVoltage(0);
+  private final double elevatorDriveRatio = Math.PI * 1.88900 * (1/12) * 2; // pi * sproket * gear ratio * doubled for pulley, # of inches per motor rotation
 
+  private int currentLevel = 1;
+
+  private final double elevatorBaseHeight = 0; // in inches, the height of the lowest position of the elevator's lowest position
+  private final double l1Height = 2 - elevatorBaseHeight; // height above the floor to set elevator carridge to, base height is subtracted to calculate the actual distance the elevator must lift the carridge
+  private final double l2Height = 3 - elevatorBaseHeight; // ^
+  private final double l3Height = 4 - elevatorBaseHeight; // ^
+  private final double l4Height = 5 - elevatorBaseHeight; // ^
   /**
   private Slot0Configs slot0Configs = new Slot0Configs().withKS(0.25).withKV(0.12).withKA(0.01).withKP(4.8).withKI(0).withKD(0.1);
   MotionMagicConfigs motionMagicConfigs = talonFXConfigs.MotionMagic;
@@ -73,13 +81,44 @@ public class Elevator extends SubsystemBase {
     // This method will be called once per scheduler run
   }
 
-  public void setHeight(double speed){
-    m_RightMotor.setControl(m_mmReq.withPosition(-speed).withSlot(0));
+  public void setLevel(int level){
+    if (level > 0 && level < 5) currentLevel = level;
+
+    switch(currentLevel){
+      case 1:
+        m_RightMotor.setControl(m_mmReq.withPosition(-inchesToRotations(l1Height)).withSlot(0));
+        break;
+      case 2:
+        m_RightMotor.setControl(m_mmReq.withPosition(-inchesToRotations(l1Height)).withSlot(0));
+        break;
+      case 3:
+        m_RightMotor.setControl(m_mmReq.withPosition(-inchesToRotations(l1Height)).withSlot(0));
+        break;
+      case 4:
+        m_RightMotor.setControl(m_mmReq.withPosition(-inchesToRotations(l1Height)).withSlot(0));
+        break;
+    }
+
   }
 
-  public void setL1Height(){
-    double height = 2;
-    m_RightMotor.setControl(m_mmReq.withPosition(-height).withSlot(0));
+  public void setLevel(){
+    switch(currentLevel){
+      case 1:
+        m_RightMotor.setControl(m_mmReq.withPosition(-inchesToRotations(l1Height)).withSlot(0));
+        break;
+      case 2:
+        m_RightMotor.setControl(m_mmReq.withPosition(-inchesToRotations(l1Height)).withSlot(0));
+        break;
+      case 3:
+        m_RightMotor.setControl(m_mmReq.withPosition(-inchesToRotations(l1Height)).withSlot(0));
+        break;
+      case 4:
+        m_RightMotor.setControl(m_mmReq.withPosition(-inchesToRotations(l1Height)).withSlot(0));
+        break;
+    }
   }
 
+  public double inchesToRotations(double inches) {
+    return inches / elevatorDriveRatio;
+  }
 }

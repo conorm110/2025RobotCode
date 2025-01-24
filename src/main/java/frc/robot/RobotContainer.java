@@ -25,6 +25,8 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.commands.ElevatorManual;
+import frc.robot.commands.MaintainElevatorLevel;
+import frc.robot.commands.SetElevatorLevel;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Elevator;
@@ -81,7 +83,11 @@ public class RobotContainer {
             )
         );
 
-        elevator.setDefaultCommand(new ElevatorManual(elevator, target_rotations.getDouble(0)));
+        elevator.setDefaultCommand(new MaintainElevatorLevel(elevator));
+        operatorJoystick.a().onTrue(new SetElevatorLevel(elevator, 1));
+        operatorJoystick.b().onTrue(new SetElevatorLevel(elevator, 2));
+        operatorJoystick.x().onTrue(new SetElevatorLevel(elevator, 3));
+        operatorJoystick.y().onTrue(new SetElevatorLevel(elevator, 4));
         
         joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
         joystick.b().whileTrue(drivetrain.applyRequest(() ->

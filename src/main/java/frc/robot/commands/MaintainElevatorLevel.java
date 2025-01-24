@@ -4,21 +4,15 @@
 
 package frc.robot.commands;
 
-import java.util.function.DoubleSupplier;
-
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.Elevator;
 
 /* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
-public class ElevatorManual extends Command {
+public class MaintainElevatorLevel extends Command {
   private Elevator m_elevator;
-  private DoubleSupplier m_SpeedSupplier;
-  private double m_target_height;
   /** Creates a new ElevatorManual. */
-  public ElevatorManual(Elevator elevator, double target_height) {
+  public MaintainElevatorLevel(Elevator elevator) {
     this.m_elevator = elevator;
-    this.m_target_height = target_height;
     addRequirements(this.m_elevator);
     // Use addRequirements() here to declare subsystem dependencies.
   }
