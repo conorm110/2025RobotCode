@@ -88,6 +88,9 @@ public class RobotContainer {
         operatorJoystick.b().onTrue(new SetElevatorLevel(elevator, 2));
         operatorJoystick.x().onTrue(new SetElevatorLevel(elevator, 3));
         operatorJoystick.y().onTrue(new SetElevatorLevel(elevator, 4));
+
+        // TODO: plumb sysid routines for elevator just like for the drivetrain but on the operatorJoystick
+
         //elevator.setDefaultCommand(new ManualElevator(elevator, () -> operatorJoystick.getLeftY()));
         
         joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));

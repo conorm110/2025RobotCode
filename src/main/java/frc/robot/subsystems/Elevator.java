@@ -6,6 +6,7 @@ package frc.robot.subsystems;
 
 import static edu.wpi.first.units.Units.*;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.configs.FeedbackConfigs;
 import com.ctre.phoenix6.configs.MotionMagicConfigs;
@@ -13,74 +14,148 @@ import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
-import com.ctre.phoenix6.controls.StaticBrake;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
-
-import edu.wpi.first.math.controller.ElevatorFeedforward;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 public class Elevator extends SubsystemBase {
-  private TalonFX m_LeftMotor = new TalonFX(14);
-  private TalonFX m_RightMotor = new TalonFX(15);
-  private final MotionMagicVoltage m_mmReq = new MotionMagicVoltage(0);
-  private final double inchesPerRot = Math.PI * 1.88900 * (1.0/12.0) * 2; // pi * sproket * gear ratio * doubled for pulley, # of inches per motor rotation
+  private TalonFX m_LeftMotorFollower = new TalonFX(14);   // TODO: declare in constants
+  private TalonFX m_RightMotorDriver = new TalonFX(15);    // TODO: declare in constants
 
-  private int currentLevel = 1;
+  private final MotionMagicVoltage m_mmReq = new MotionMagicVoltage(0); 
 
-  private final double elevatorBaseHeight = 0; // in inches, the height of the lowest position of the elevator's lowest position
-  private final double l1Height = 10 - elevatorBaseHeight; // height above the floor to set elevator carridge to, base height is subtracted to calculate the actual distance the elevator must lift the carridge
-  private final double l2Height = 35 - elevatorBaseHeight; // ^
-  private final double l3Height = 40 - elevatorBaseHeight; // ^
-  private final double l4Height = 45 - elevatorBaseHeight; // ^
-  /**
-  private Slot0Configs slot0Configs = new Slot0Configs().withKS(0.25).withKV(0.12).withKA(0.01).withKP(4.8).withKI(0).withKD(0.1);
-  MotionMagicConfigs motionMagicConfigs = talonFXConfigs.MotionMagic;
-**/
+  private final double inchesPerRot = Math.PI * 1.88900 * (1.0/12.0) * 2; // pi*sproket*gear ratio*doubled for pulley
+
+  private int currentLevel = 1; // Default level if setLevel(void) is called without previously calling setLevel(int level)
+
+  //////////////////////////////////////////   Constants for Elevator Target Heights   //////////////////////////////////////////
+  // TODO: find actual values                                                                                                  //
+  // elevatorBaseHeight is the distance from the base of the elevator carridge to the floor in inches                          //
+  private final double elevatorBaseHeight = 0;                                                                                 //
+  //                                                                                                                           //
+  // the constant value in each variable below is the height the base of the carridge should go to for that level.             //
+  // elevatorBaseHeight is subtracted to find the actual distance the elevator must travel. only edit the constant !!          //
+  private final double l1Height = 10 - elevatorBaseHeight;                                                                     //
+  private final double l2Height = 35 - elevatorBaseHeight;                                                                     //
+  private final double l3Height = 40 - elevatorBaseHeight;                                                                     //
+  private final double l4Height = 45 - elevatorBaseHeight;                                                                     //
+  //                                                                                                                           //
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
-
-  /** Creates a new Elevator. */
+  ///////////////////////////////////////////////////     Constructor    //////////////////////////////////////////////////////// 
   public Elevator() {
+    m_LeftMotorFollower.setControl(new Follower(m_RightMotorDriver.getDeviceID(), false));
 
-    
-    m_LeftMotor.setControl(new Follower(m_RightMotor.getDeviceID(), false));
-
-     TalonFXConfiguration cfg = new TalonFXConfiguration();
-
-    /* Configure gear ratio */
+    TalonFXConfiguration cfg = new TalonFXConfiguration();
     FeedbackConfigs fdb = cfg.Feedback;
-    fdb.SensorToMechanismRatio = 1.0; // 12.8 rotor rotations per mechanism rotation
+    fdb.SensorToMechanismRatio = 1.0; // gear ratio calculated with inchesToRotations()
 
-    /* Configure Motion Magic */
     MotionMagicConfigs mm = cfg.MotionMagic;
-    mm.withMotionMagicCruiseVelocity(RotationsPerSecond.of(56)) // 5 (mechanism) rotations per second cruise
-      .withMotionMagicAcceleration(RotationsPerSecondPerSecond.of(1568)) // Take approximately 0.5 seconds to reach max vel
-      // Take approximately 0.1 seconds to reach max accel 
-      .withMotionMagicJerk(RotationsPerSecondPerSecond.per(Second).of(5000));
+    // TODO: move magnitudes to constants
+    mm.withMotionMagicCruiseVelocity(RotationsPerSecond.of(56))                // 56 output shaft rotations per second cruise TODO: Find higher max speed
+      .withMotionMagicAcceleration(RotationsPerSecondPerSecond.of(1568))       // TODO: Find appropriate value that isnt a random high number
+      .withMotionMagicJerk(RotationsPerSecondPerSecond.per(Second).of(5000));  // TODO: Find appropriate value that isnt a random high number
 
     Slot0Configs slot0 = cfg.Slot0;
-    slot0.kS = 0.25; // Add 0.25 V output to overcome static friction
-    slot0.kV = 0.08; // A velocity target of 1 rps results in 0.12 V output
-    slot0.kA = 0.00; // An acceleration of 1 rps/s requires 0.01 V output
-    slot0.kP = 10; // A position error of 0.2 rotations results in 12 V output
-    slot0.kI = 0; // No output for integrated error
-    slot0.kD = 0.0; // A velocity error of 1 rps results in 0.5 V output
+    // TODO: move to constants
+    slot0.kS = 0.25; // TODO: tune PID
+    slot0.kV = 0.08; // found with online calculation
+    slot0.kA = 0.00; // 
+    slot0.kP = 10;   // 
+    slot0.kI = 0;    // No output for integrated error
+    slot0.kD = 0.0;  // 
 
-    StatusCode status = StatusCode.StatusCodeNotInitialized;
+    // apply motor configs
+    StatusCode statusLeft = StatusCode.StatusCodeNotInitialized;
+    StatusCode statusRight = StatusCode.StatusCodeNotInitialized;
     for (int i = 0; i < 5; ++i) {
-      status = m_RightMotor.getConfigurator().apply(cfg);
-      status = m_LeftMotor.getConfigurator().apply(cfg);
-      if (status.isOK()) break;
+      statusRight = m_RightMotorDriver.getConfigurator().apply(cfg);
+      statusLeft = m_LeftMotorFollower.getConfigurator().apply(cfg);
+      if (statusLeft.isOK() && statusRight.isOK()) break;
     }
-    if (!status.isOK()) {
-      System.out.println("Could not configure device. Error: " + status.toString());
+    if (!statusRight.isOK()) {
+      System.out.println("Could not configure device. Error: " + statusLeft.toString());
+    }
+    if (!statusLeft.isOK()) {
+      System.out.println("Could not configure device. Error: " + statusLeft.toString());
     }
   }
 
+  private final VoltageOut m_voltReq = new VoltageOut(0.0);
 
+  private final SysIdRoutine m_sysIdRoutine =
+    new SysIdRoutine(
+        new SysIdRoutine.Config(
+          null,        // Use default ramp rate (1 V/s)
+          Volts.of(2), // Super low step voltage because im scared of the elevator
+          null,          // Use default timeout (10 s)
+                                 // Log state with Phoenix SignalLogger class
+          (state) -> SignalLogger.writeString("state", state.toString())
+        ),
+        new SysIdRoutine.Mechanism(
+          (volts) -> m_RightMotorDriver.setControl(m_voltReq.withOutput(volts.in(Volts))),
+          null,
+          this
+        )
+    );
+
+  public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+   return m_sysIdRoutine.quasistatic(direction);
+}
+
+  public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+    return m_sysIdRoutine.dynamic(direction);
+  }
+
+  /////////////////////////////////////////////////// End of Constructor ////////////////////////////////////////////////////////
+  
+  ///////////////////////////////////////////////////      Methods       ////////////////////////////////////////////////////////
   @Override
   public void periodic() {
-    // This method will be called once per scheduler run
+    debugElevatorHeightSmartDashboard();
+  }
+
+  /* setLevel(int level) - Sets level that the elevator will try to target. Does not control the motor directly, 
+     needs setLevel(void) to drive the motor */
+  public void setLevel(int level){
+    if (level > 0 && level < 5) currentLevel = level;
+  }
+
+  /* setLevel(void) - Use motion magic to target position set as currentLevel. */
+  public void setLevel(){
+    // negative rotations will make the elevator carridge travel up. 
+    // positive rotations will make the elevator carridge travel down.
+    switch(currentLevel){
+      case 1:
+        m_RightMotorDriver.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l1Height)).withSlot(0));
+        break;
+      case 2:
+        m_RightMotorDriver.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l2Height)).withSlot(0));
+        break;
+      case 3:
+        m_RightMotorDriver.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l3Height)).withSlot(0));
+        break;
+      case 4:
+        m_RightMotorDriver.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l4Height)).withSlot(0));
+        break;
+    }
+  }
+
+  /* inchesToRotations(double inches) Converts inches to rotations of motor shaft for elevator. */
+  public double inchesToRotations(double inches) {
+    return  inches / inchesPerRot;
+  }
+
+  /* setManualSpeed(double m_speed) - Sets speed without using PID controls. */
+  public void setManualSpeed(double m_speed) {
+    m_RightMotorDriver.set(m_speed);
+  }
+
+  ///////////////////////////////////////////    Debug Methods    ///////////////////////////////////////////
+  private void debugElevatorHeightSmartDashboard() {
     double currentInches;
     if (currentLevel == 1) {
       currentInches = l1Height;
@@ -94,39 +169,9 @@ public class Elevator extends SubsystemBase {
     else {
       currentInches = l4Height;
     }
-    SmartDashboard.putNumber("Right Motor Encoder", m_RightMotor.getPosition().getValueAsDouble());
+    SmartDashboard.putNumber("Right Motor Encoder", m_RightMotorDriver.getPosition().getValueAsDouble());
     SmartDashboard.putNumber("Current Rotations", inchesToRotations(currentInches));
     SmartDashboard.putNumber("Inches", currentInches);
-  }
-
-  public void setLevel(int level){
-    if (level > 0 && level < 5) currentLevel = level;
-  }
-
-  public void setLevel(){
-    switch(currentLevel){
-      case 1:
-        m_RightMotor.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l1Height)).withSlot(0));
-        break;
-      case 2:
-        m_RightMotor.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l2Height)).withSlot(0));
-        break;
-      case 3:
-        m_RightMotor.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l3Height)).withSlot(0));
-        break;
-      case 4:
-        m_RightMotor.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l4Height)).withSlot(0));
-        break;
-    }
-  }
-
-  public void setManualSpeed(double m_speed) {
-    m_RightMotor.set(m_speed);
-    
-  }
-
-  public double inchesToRotations(double inches) {
-    return  inches / inchesPerRot;
   }
 }
  
