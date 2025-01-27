@@ -1,7 +1,3 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot.commands;
 
 import java.util.function.DoubleSupplier;
@@ -10,38 +6,35 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.Elevator;
 
-/* You should consider using the more terse Command factories API instead https://docs.wpilib.org/en/stable/docs/software/commandbased/organizing-command-based.html#defining-commands */
 public class ManualElevator extends Command {
   private Elevator m_elevator;
   private DoubleSupplier m_speed;
-  /** Creates a new ElevatorManual. */
+  /** Creates a new ManualElevator. 
+   * 
+   * Should be set as default command when it is desired to control the elevators speed with a joystick.
+  */
   public ManualElevator(Elevator elevator, DoubleSupplier speed) {
     this.m_elevator = elevator;
     this.m_speed = speed;
     addRequirements(this.m_elevator);
-    // Use addRequirements() here to declare subsystem dependencies.
   }
 
-  // Called when the command is initially scheduled.
   @Override
   public void initialize() {
 
   }
 
-  // Called every time the scheduler runs while the command is scheduled.
   @Override
   public void execute() {
     m_elevator.setManualSpeed(m_speed.getAsDouble());
     SmartDashboard.putNumber("manual elevator speed", m_speed.getAsDouble());
   }
 
-  // Called once the command ends or is interrupted.
   @Override
   public void end(boolean interrupted) {
 
   }
 
-  // Returns true when the command should end.
   @Override
   public boolean isFinished() {
     return false;

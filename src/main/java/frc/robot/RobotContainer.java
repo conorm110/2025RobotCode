@@ -25,8 +25,11 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.commands.MaintainElevatorLevel;
+import frc.robot.commands.KeepElevatorPosition;
+import frc.robot.commands.MaintainElevatorVoltage;
 import frc.robot.commands.ManualElevator;
 import frc.robot.commands.SetElevatorLevel;
+import frc.robot.commands.SetElevatorVoltage;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Elevator;
@@ -53,14 +56,8 @@ public class RobotContainer {
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
     public final Elevator elevator = new Elevator();
-
     /* Path follower */
     private final SendableChooser<Command> autoChooser;
-
-    private ShuffleboardTab tab = Shuffleboard.getTab("Drive");
-   private GenericEntry target_rotations =
-      tab.add("target_rotations", 1)
-         .getEntry();
 
     public RobotContainer() {
         autoChooser = AutoBuilder.buildAutoChooser("Tests");
@@ -70,10 +67,47 @@ public class RobotContainer {
     }
 
     private void configureBindings() {
-        // Note that X is defined as forward according to WPILib convention,
-        // and Y is defined as to the left according to WPILib convention.
         SignalLogger.setPath("/media/sda1/ctre-logs/");
 
+        //////////////////////////////////////// Elevator Controls (Operator Joystick) //////////////////////////////////////////////
+        switch(Constants.Elevator.elevatorMode) {
+            case 1: 
+                // 1 - Debugging with Set Speed Mode, controls elevator through directly mapping the joystick
+                //     to the speed of the elevator motors
+                elevator.setDefaultCommand(new ManualElevator(elevator, () -> operatorJoystick.getLeftY()));
+                break;
+            case 2:
+                // 2 - Debugging with Set Voltage Mode, controls the elevator through always sending a 
+                //     constant voltage. This voltage can be changed as the robot is enabled through buttons
+                elevator.setDefaultCommand(new MaintainElevatorVoltage(elevator));
+                operatorJoystick.a().onTrue(new SetElevatorVoltage(elevator, 0));
+                operatorJoystick.b().onTrue(new SetElevatorVoltage(elevator, 1));
+                operatorJoystick.x().onTrue(new SetElevatorVoltage(elevator, 2));
+                break;
+            case 3:
+                // 3 - SysID Mode, allows for the running of SysID tests, will hold the elevator in the last position in between tests
+                elevator.setDefaultCommand(new KeepElevatorPosition(elevator));
+                operatorJoystick.leftBumper().onTrue(Commands.runOnce(SignalLogger::start));
+                operatorJoystick.rightBumper().onTrue(Commands.runOnce(SignalLogger::stop));
+
+                operatorJoystick.start().and(joystick.y()).whileTrue(elevator.sysIdDynamic(Direction.kForward));
+                operatorJoystick.start().and(joystick.y()).whileTrue(elevator.sysIdDynamic(Direction.kReverse));
+                operatorJoystick.start().and(joystick.y()).whileTrue(elevator.sysIdQuasistatic(Direction.kForward));
+                operatorJoystick.start().and(joystick.y()).whileTrue(elevator.sysIdQuasistatic(Direction.kReverse));
+                break;
+            default:
+                // Default - Standard Mode, control elevator through buttons corresponding to L1, L2, L3, and L4, defaulting to a safe position for the elevator
+                elevator.setDefaultCommand(new MaintainElevatorLevel(elevator));
+                operatorJoystick.a().onTrue(new SetElevatorLevel(elevator, 1));
+                operatorJoystick.b().onTrue(new SetElevatorLevel(elevator, 2));
+                operatorJoystick.x().onTrue(new SetElevatorLevel(elevator, 3));
+                operatorJoystick.y().onTrue(new SetElevatorLevel(elevator, 4));
+                break;
+        }
+        
+
+
+        ////////////////////////////////////////// Swerve Controls (Driver Joystick) ////////////////////////////////////////////////
         drivetrain.setDefaultCommand(
             // Drivetrain will execute this command periodically
             drivetrain.applyRequest(() ->
@@ -83,16 +117,6 @@ public class RobotContainer {
             )
         );
 
-        elevator.setDefaultCommand(new MaintainElevatorLevel(elevator));
-        operatorJoystick.a().onTrue(new SetElevatorLevel(elevator, 1));
-        operatorJoystick.b().onTrue(new SetElevatorLevel(elevator, 2));
-        operatorJoystick.x().onTrue(new SetElevatorLevel(elevator, 3));
-        operatorJoystick.y().onTrue(new SetElevatorLevel(elevator, 4));
-
-        // TODO: plumb sysid routines for elevator just like for the drivetrain but on the operatorJoystick
-
-        //elevator.setDefaultCommand(new ManualElevator(elevator, () -> operatorJoystick.getLeftY()));
-        
         joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
         joystick.b().whileTrue(drivetrain.applyRequest(() ->
             point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
@@ -115,7 +139,6 @@ public class RobotContainer {
         joystick.back().and(joystick.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
         joystick.back().and(joystick.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
         
-
         // reset the field-centric heading on left bumper press
         joystick.a().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
 

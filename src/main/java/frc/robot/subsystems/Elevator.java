@@ -20,30 +20,17 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.Constants;
 
 public class Elevator extends SubsystemBase {
-  private TalonFX m_LeftMotorFollower = new TalonFX(14);   // TODO: declare in constants
-  private TalonFX m_RightMotorDriver = new TalonFX(15);    // TODO: declare in constants
+  private TalonFX m_LeftMotorFollower = new TalonFX(Constants.Elevator.leftMotorID);
+  private TalonFX m_RightMotorDriver = new TalonFX(Constants.Elevator.rightMotorID);
 
   private final MotionMagicVoltage m_mmReq = new MotionMagicVoltage(0); 
 
-  private final double inchesPerRot = Math.PI * 1.88900 * (1.0/12.0) * 2; // pi*sproket*gear ratio*doubled for pulley
-
   private int currentLevel = 1; // Default level if setLevel(void) is called without previously calling setLevel(int level)
-
-  //////////////////////////////////////////   Constants for Elevator Target Heights   //////////////////////////////////////////
-  // TODO: find actual values                                                                                                  //
-  // elevatorBaseHeight is the distance from the base of the elevator carridge to the floor in inches                          //
-  private final double elevatorBaseHeight = 0;                                                                                 //
-  //                                                                                                                           //
-  // the constant value in each variable below is the height the base of the carridge should go to for that level.             //
-  // elevatorBaseHeight is subtracted to find the actual distance the elevator must travel. only edit the constant !!          //
-  private final double l1Height = 10 - elevatorBaseHeight;                                                                     //
-  private final double l2Height = 35 - elevatorBaseHeight;                                                                     //
-  private final double l3Height = 40 - elevatorBaseHeight;                                                                     //
-  private final double l4Height = 45 - elevatorBaseHeight;                                                                     //
-  //                                                                                                                           //
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  private double currentVoltage = 0.0; // Default voltage is setVoltage(void) is called without previously calling setVoltage()
+                                       // for debugging only, bad way to control elevator height !!
   
   ///////////////////////////////////////////////////     Constructor    //////////////////////////////////////////////////////// 
   public Elevator() {
@@ -54,19 +41,18 @@ public class Elevator extends SubsystemBase {
     fdb.SensorToMechanismRatio = 1.0; // gear ratio calculated with inchesToRotations()
 
     MotionMagicConfigs mm = cfg.MotionMagic;
-    // TODO: move magnitudes to constants
-    mm.withMotionMagicCruiseVelocity(RotationsPerSecond.of(56))                // 56 output shaft rotations per second cruise TODO: Find higher max speed
-      .withMotionMagicAcceleration(RotationsPerSecondPerSecond.of(1568))       // TODO: Find appropriate value that isnt a random high number
-      .withMotionMagicJerk(RotationsPerSecondPerSecond.per(Second).of(5000));  // TODO: Find appropriate value that isnt a random high number
+    mm.withMotionMagicCruiseVelocity(RotationsPerSecond.of(Constants.Elevator.mm_cruiseVelocity))
+      .withMotionMagicAcceleration(RotationsPerSecondPerSecond.of(Constants.Elevator.mm_acceleration))
+      .withMotionMagicJerk(RotationsPerSecondPerSecond.per(Second).of(Constants.Elevator.mm_jerk)); 
 
     Slot0Configs slot0 = cfg.Slot0;
-    // TODO: move to constants
-    slot0.kS = 0.25; // TODO: tune PID
-    slot0.kV = 0.08; // found with online calculation
-    slot0.kA = 0.00; // 
-    slot0.kP = 10;   // 
-    slot0.kI = 0;    // No output for integrated error
-    slot0.kD = 0.0;  // 
+    slot0.kS = Constants.Elevator.elevatorkS; 
+    slot0.kV = Constants.Elevator.elevatorkV;
+    slot0.kA = Constants.Elevator.elevatorkA;
+    slot0.kG = Constants.Elevator.elevatorkG;
+    slot0.kP = Constants.Elevator.elevatorkP;
+    slot0.kI = Constants.Elevator.elevatorkI;
+    slot0.kD = Constants.Elevator.elevatorkD; 
 
     // apply motor configs
     StatusCode statusLeft = StatusCode.StatusCodeNotInitialized;
@@ -89,11 +75,10 @@ public class Elevator extends SubsystemBase {
   private final SysIdRoutine m_sysIdRoutine =
     new SysIdRoutine(
         new SysIdRoutine.Config(
-          null,        // Use default ramp rate (1 V/s)
-          Volts.of(2), // Super low step voltage because im scared of the elevator
-          null,          // Use default timeout (10 s)
-                                 // Log state with Phoenix SignalLogger class
-          (state) -> SignalLogger.writeString("state", state.toString())
+          Volts.of(Constants.Elevator.sysID_rampRate).div(Seconds.one()),
+          Volts.of(Constants.Elevator.sysID_stepVoltage),
+          null,                                                       // Use default timeout (10 s)
+          (state) -> SignalLogger.writeString("state", state.toString()) // Log state with Phoenix SignalLogger class
         ),
         new SysIdRoutine.Mechanism(
           (volts) -> m_RightMotorDriver.setControl(m_voltReq.withOutput(volts.in(Volts))),
@@ -116,6 +101,7 @@ public class Elevator extends SubsystemBase {
   @Override
   public void periodic() {
     debugElevatorHeightSmartDashboard();
+    debugElevatorVoltageSmartDashboard();
   }
 
   /* setLevel(int level) - Sets level that the elevator will try to target. Does not control the motor directly, 
@@ -124,29 +110,30 @@ public class Elevator extends SubsystemBase {
     if (level > 0 && level < 5) currentLevel = level;
   }
 
+
   /* setLevel(void) - Use motion magic to target position set as currentLevel. */
   public void setLevel(){
-    // negative rotations will make the elevator carridge travel up. 
-    // positive rotations will make the elevator carridge travel down.
+    // positive rotations will make the elevator carridge travel up. 
+    // negative rotations will make the elevator carridge travel down.
     switch(currentLevel){
       case 1:
-        m_RightMotorDriver.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l1Height)).withSlot(0));
+        m_RightMotorDriver.setControl(m_mmReq.withPosition(inchesToRotations(Constants.Elevator.l1Height)).withSlot(0));
         break;
       case 2:
-        m_RightMotorDriver.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l2Height)).withSlot(0));
+        m_RightMotorDriver.setControl(m_mmReq.withPosition(inchesToRotations(Constants.Elevator.l2Height)).withSlot(0));
         break;
       case 3:
-        m_RightMotorDriver.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l3Height)).withSlot(0));
+        m_RightMotorDriver.setControl(m_mmReq.withPosition(inchesToRotations(Constants.Elevator.l3Height)).withSlot(0));
         break;
       case 4:
-        m_RightMotorDriver.setControl(m_mmReq.withPosition(-1 * inchesToRotations(l4Height)).withSlot(0));
+        m_RightMotorDriver.setControl(m_mmReq.withPosition(inchesToRotations(Constants.Elevator.l4Height)).withSlot(0));
         break;
     }
   }
 
   /* inchesToRotations(double inches) Converts inches to rotations of motor shaft for elevator. */
   public double inchesToRotations(double inches) {
-    return  inches / inchesPerRot;
+    return  inches / Constants.Elevator.inchesPerRot;
   }
 
   /* setManualSpeed(double m_speed) - Sets speed without using PID controls. */
@@ -154,24 +141,49 @@ public class Elevator extends SubsystemBase {
     m_RightMotorDriver.set(m_speed);
   }
 
+  public void setVoltage(double voltage) {
+    currentVoltage = voltage;
+  }
+
+  public double getVoltage() {
+    return currentVoltage;
+  }
+
+  public void setVoltage() {
+    m_RightMotorDriver.setVoltage(currentVoltage);
+  }
+/* maintainElevatorPosition() - Runs motor to maintain position as recorded by the internal encoder */
+  public void maintainElevatorPosition() {
+    double position = m_RightMotorDriver.getPosition().getValueAsDouble();
+    if (position < 0.05) position = 0.05; // prevents the elevator from trying to go further down than possible. slightly more than zero to keep a safe position even if the relative encoder slips
+    m_RightMotorDriver.setControl(m_mmReq.withPosition(position).withSlot(0));
+  }
+
   ///////////////////////////////////////////    Debug Methods    ///////////////////////////////////////////
   private void debugElevatorHeightSmartDashboard() {
     double currentInches;
     if (currentLevel == 1) {
-      currentInches = l1Height;
+      currentInches = Constants.Elevator.l1Height;
     }
     else if(currentLevel == 2){
-      currentInches = l2Height;
+      currentInches = Constants.Elevator.l2Height;
     }
     else if(currentLevel == 3){
-      currentInches = l3Height;
+      currentInches = Constants.Elevator.l3Height;
     }
     else {
-      currentInches = l4Height;
+      currentInches = Constants.Elevator.l4Height;
     }
-    SmartDashboard.putNumber("Right Motor Encoder", m_RightMotorDriver.getPosition().getValueAsDouble());
+    SmartDashboard.putNumber("Actual Rotations", m_RightMotorDriver.getPosition().getValueAsDouble());
     SmartDashboard.putNumber("Current Rotations", inchesToRotations(currentInches));
-    SmartDashboard.putNumber("Inches", currentInches);
+    SmartDashboard.putNumber("Actual Inches", m_RightMotorDriver.getPosition().getValueAsDouble() * Constants.Elevator.inchesPerRot);
+    SmartDashboard.putNumber("CurrentInches", currentInches);
+  }
+
+  public void debugElevatorVoltageSmartDashboard() {
+    SmartDashboard.putNumber("Current Voltage: ", currentVoltage);
+    SmartDashboard.putNumber("Rotations per Second",m_RightMotorDriver.getVelocity().getValueAsDouble());
+    
   }
 }
  
