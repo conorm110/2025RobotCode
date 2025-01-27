@@ -133,7 +133,7 @@ public class Elevator extends SubsystemBase {
 
   /* inchesToRotations(double inches) Converts inches to rotations of motor shaft for elevator. */
   public double inchesToRotations(double inches) {
-    return  inches / Constants.Elevator.inchesPerRot;
+    return  inches * Constants.Elevator.inchesMultiplier / Constants.Elevator.inchesPerRot;
   }
 
   /* setManualSpeed(double m_speed) - Sets speed without using PID controls. */
@@ -155,8 +155,11 @@ public class Elevator extends SubsystemBase {
 /* maintainElevatorPosition() - Runs motor to maintain position as recorded by the internal encoder */
   public void maintainElevatorPosition() {
     double position = m_RightMotorDriver.getPosition().getValueAsDouble();
-    if (position < 0.05) position = 0.05; // prevents the elevator from trying to go further down than possible. slightly more than zero to keep a safe position even if the relative encoder slips
-    m_RightMotorDriver.setControl(m_mmReq.withPosition(position).withSlot(0));
+    if (position > 15) {
+      m_RightMotorDriver.setControl(m_mmReq.withPosition(inchesToRotations(Constants.Elevator.l4Height)).withSlot(0));
+    } else {
+      m_RightMotorDriver.setControl(m_mmReq.withPosition(inchesToRotations(7)).withSlot(0));
+    }
   }
 
   ///////////////////////////////////////////    Debug Methods    ///////////////////////////////////////////

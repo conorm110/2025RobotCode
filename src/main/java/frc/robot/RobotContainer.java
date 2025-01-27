@@ -90,10 +90,10 @@ public class RobotContainer {
                 operatorJoystick.leftBumper().onTrue(Commands.runOnce(SignalLogger::start));
                 operatorJoystick.rightBumper().onTrue(Commands.runOnce(SignalLogger::stop));
 
-                operatorJoystick.start().and(joystick.y()).whileTrue(elevator.sysIdDynamic(Direction.kForward));
-                operatorJoystick.start().and(joystick.y()).whileTrue(elevator.sysIdDynamic(Direction.kReverse));
-                operatorJoystick.start().and(joystick.y()).whileTrue(elevator.sysIdQuasistatic(Direction.kForward));
-                operatorJoystick.start().and(joystick.y()).whileTrue(elevator.sysIdQuasistatic(Direction.kReverse));
+                operatorJoystick.back().and(operatorJoystick.y()).whileTrue(elevator.sysIdDynamic(Direction.kForward));
+                operatorJoystick.back().and(operatorJoystick.x()).whileTrue(elevator.sysIdDynamic(Direction.kReverse));
+                operatorJoystick.start().and(operatorJoystick.y()).whileTrue(elevator.sysIdQuasistatic(Direction.kForward));
+                operatorJoystick.start().and(operatorJoystick.x()).whileTrue(elevator.sysIdQuasistatic(Direction.kReverse));
                 break;
             default:
                 // Default - Standard Mode, control elevator through buttons corresponding to L1, L2, L3, and L4, defaulting to a safe position for the elevator
