@@ -14,6 +14,7 @@ import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
@@ -24,18 +25,21 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-import frc.robot.commands.MaintainElevatorLevel;
-import frc.robot.commands.KeepElevatorPosition;
-import frc.robot.commands.MaintainElevatorVoltage;
-import frc.robot.commands.ManualElevator;
-import frc.robot.commands.SetElevatorLevel;
-import frc.robot.commands.SetElevatorVoltage;
-import frc.robot.generated.TunerConstants;
+import frc.robot.commands.elevator.KeepElevatorPosition;
+import frc.robot.commands.elevator.MaintainElevatorLevel;
+import frc.robot.commands.elevator.MaintainElevatorVoltage;
+import frc.robot.commands.elevator.ManualElevator;
+import frc.robot.commands.elevator.SetElevatorLevel;
+import frc.robot.commands.elevator.SetElevatorVoltage;
+import frc.robot.commands.manipulator.Intake;
+import frc.robot.commands.manipulator.Shoot;
+import frc.robot.generated.DrivetrainConfigs;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Elevator;
+import frc.robot.subsystems.Manipulator;
 
 public class RobotContainer {
-    private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
+    private double MaxSpeed = DrivetrainConfigs.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
     private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond); // 3/4 of a rotation per second max angular velocity
     
     /* Setting up bindings for necessary control of the swerve drive platform */
@@ -53,22 +57,35 @@ public class RobotContainer {
 
     private final CommandXboxController operatorJoystick = new CommandXboxController(1);
 
-    public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+    public final CommandSwerveDrivetrain drivetrain = DrivetrainConfigs.createDrivetrain();
 
     public final Elevator elevator = new Elevator();
+    public final Manipulator manipulator = new Manipulator();
+    
+    private SlewRateLimiter angle_Limiter;
+    private SlewRateLimiter x_Limiter;
+    private SlewRateLimiter y_Limiter;
+
     /* Path follower */
     private final SendableChooser<Command> autoChooser;
 
     public RobotContainer() {
-        autoChooser = AutoBuilder.buildAutoChooser("Tests");
+        autoChooser = AutoBuilder.buildAutoChooser("New Auto");
         SmartDashboard.putData("Auto Mode", autoChooser);
+        
+        angle_Limiter = new SlewRateLimiter(Constants.Swerve.joystickSlewLimiter_angle);
+        x_Limiter = new SlewRateLimiter(Constants.Swerve.joystickSlewLimiter_xy);
+        y_Limiter = new SlewRateLimiter(Constants.Swerve.joystickSlewLimiter_xy);
 
         configureBindings();
     }
 
     private void configureBindings() {
         SignalLogger.setPath("/media/sda1/ctre-logs/");
-
+        //////////////////////////////////////// Manipulator Controls (Operator Joystick) //////////////////////////////////////////////
+        operatorJoystick.leftTrigger().onTrue(new Intake(manipulator) );
+        operatorJoystick.rightTrigger().onTrue(new Shoot(manipulator) );
+        
         //////////////////////////////////////// Elevator Controls (Operator Joystick) //////////////////////////////////////////////
         switch(Constants.Elevator.elevatorMode) {
             case 1: 
@@ -111,9 +128,9 @@ public class RobotContainer {
         drivetrain.setDefaultCommand(
             // Drivetrain will execute this command periodically
             drivetrain.applyRequest(() ->
-                drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
-                    .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
-                    .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
+                drive.withVelocityX(-y_Limiter.calculate(joystick.getLeftY()) * MaxSpeed) // Drive forward with negative Y (forward)
+                    .withVelocityY(-x_Limiter.calculate(joystick.getLeftX()) * MaxSpeed) // Drive left with negative X (left)
+                    .withRotationalRate(-angle_Limiter.calculate(joystick.getRightX()) * MaxAngularRate) // Drive counterclockwise with negative X (left)
             )
         );
 
