@@ -29,7 +29,7 @@ public class Shoot extends Command {
 
     @Override
     public boolean isFinished() {
-        if (m_manipulator.algaeChecker() == 0) {
+        if (m_manipulator.isCoralAtFrontSensor() == 0) {
             return true;
         } else {
             return false;

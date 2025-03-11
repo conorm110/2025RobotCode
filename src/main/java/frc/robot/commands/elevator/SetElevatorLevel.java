@@ -1,10 +1,12 @@
 package frc.robot.commands.elevator;
 
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.subsystems.AlgaeArm;
 import frc.robot.subsystems.Elevator;
 
 public class SetElevatorLevel extends Command {
   private Elevator m_elevator;
+  private AlgaeArm m_AlgaeArm;
   private int m_level;
   /** Creates a new SetElevatorLevel. 
    * 
@@ -13,10 +15,11 @@ public class SetElevatorLevel extends Command {
    * to add another 0th position to bottom out the elevator for resetting 
    * the relative encoder.
   */
-  public SetElevatorLevel(Elevator elevator, int level) {
+  public SetElevatorLevel(Elevator elevator, AlgaeArm algaeArm, int level) {
     this.m_elevator = elevator;
+    this.m_AlgaeArm = algaeArm;
     this.m_level = level;
-    addRequirements(this.m_elevator);
+    addRequirements(this.m_elevator, this.m_AlgaeArm);
   }
 
   @Override
@@ -26,7 +29,7 @@ public class SetElevatorLevel extends Command {
 
   @Override
   public void execute() {
-    m_elevator.setLevel(m_level);
+    if (m_AlgaeArm.armIsDown()) m_elevator.setLevel(m_level);
   }
 
   @Override

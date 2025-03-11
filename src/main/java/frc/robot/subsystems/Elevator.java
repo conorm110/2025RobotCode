@@ -16,6 +16,9 @@ import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -23,8 +26,8 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 
 public class Elevator extends SubsystemBase {
-  private TalonFX m_LeftMotorFollower = new TalonFX(Constants.Elevator.leftMotorID);
-  private TalonFX m_RightMotorDriver = new TalonFX(Constants.Elevator.rightMotorID);
+  private TalonFX m_LeftMotorFollower = new TalonFX(Constants.Elevator.leftMotorID, "*");
+  private TalonFX m_RightMotorDriver = new TalonFX(Constants.Elevator.rightMotorID, "*");
 
   private final MotionMagicVoltage m_mmReq = new MotionMagicVoltage(0); 
 
@@ -38,6 +41,7 @@ public class Elevator extends SubsystemBase {
 
     TalonFXConfiguration cfg = new TalonFXConfiguration();
     FeedbackConfigs fdb = cfg.Feedback;
+    cfg.MotorOutput.withInverted(InvertedValue.CounterClockwise_Positive);
     fdb.SensorToMechanismRatio = 1.0; // gear ratio calculated with inchesToRotations()
 
     MotionMagicConfigs mm = cfg.MotionMagic;
@@ -60,6 +64,8 @@ public class Elevator extends SubsystemBase {
     for (int i = 0; i < 5; ++i) {
       statusRight = m_RightMotorDriver.getConfigurator().apply(cfg);
       statusLeft = m_LeftMotorFollower.getConfigurator().apply(cfg);
+      m_LeftMotorFollower.setNeutralMode(NeutralModeValue.Brake);
+      m_RightMotorDriver.setNeutralMode(NeutralModeValue.Brake);
       if (statusLeft.isOK() && statusRight.isOK()) break;
     }
     if (!statusRight.isOK()) {
@@ -117,7 +123,12 @@ public class Elevator extends SubsystemBase {
     // negative rotations will make the elevator carridge travel down.
     switch(currentLevel){
       case 1:
-        m_RightMotorDriver.setControl(m_mmReq.withPosition(inchesToRotations(Constants.Elevator.l1Height)).withSlot(0));
+        if(m_RightMotorDriver.getPosition().getValueAsDouble() * Constants.Elevator.inchesPerRot < 3.5) {
+          m_RightMotorDriver.setVoltage(0);
+          m_RightMotorDriver.setPosition(0);
+        } else {
+          m_RightMotorDriver.setControl(m_mmReq.withPosition(inchesToRotations(Constants.Elevator.l1Height)).withSlot(0));
+        }
         break;
       case 2:
         m_RightMotorDriver.setControl(m_mmReq.withPosition(inchesToRotations(Constants.Elevator.l2Height)).withSlot(0));
@@ -128,6 +139,8 @@ public class Elevator extends SubsystemBase {
       case 4:
         m_RightMotorDriver.setControl(m_mmReq.withPosition(inchesToRotations(Constants.Elevator.l4Height)).withSlot(0));
         break;
+      default:
+        m_RightMotorDriver.set(0);
     }
   }
 
@@ -187,6 +200,17 @@ public class Elevator extends SubsystemBase {
     SmartDashboard.putNumber("Current Voltage: ", currentVoltage);
     SmartDashboard.putNumber("Rotations per Second",m_RightMotorDriver.getVelocity().getValueAsDouble());
     
+  }
+  public boolean lockAlgaeArmDown() {
+    boolean lockDown = true;
+    if (currentLevel != 1) {
+      lockDown = false;
+    }
+    return lockDown;
+  }
+
+  public int getLevel() {
+    return currentLevel;
   }
 }
  

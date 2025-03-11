@@ -1,9 +1,26 @@
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Rotation2d;
+
 public class Constants {
+
+    public static final class Field {
+        // Rotation Targets Used By Field Oriented w/ Constant
+        public static final Rotation2d angle_LeftCloseReef = Rotation2d.fromDegrees(120);
+        public static final Rotation2d angle_MiddleCloseReef = Rotation2d.fromDegrees(180);
+        public static final Rotation2d angle_RightCloseReef = Rotation2d.fromDegrees(-120);
+
+        public static final Rotation2d angle_LeftFarReef = Rotation2d.fromDegrees(60);
+        public static final Rotation2d angle_MiddleFarReef = Rotation2d.fromDegrees(0);
+        public static final Rotation2d angle_RightFarReef = Rotation2d.fromDegrees(-60);
+
+        public static final Rotation2d angle_LeftCoralStation = Rotation2d.fromDegrees(126);
+        public static final Rotation2d angle_RightCoralStation= Rotation2d.fromDegrees(234);
+    }
+
     public static final class Swerve {
         // Routine to Apply for sysID (0 - translation; 1 - steer; 2 - rotation)
-        public static final int RoutineToApplySysID = 0;
+        public static final int RoutineToApplySysID = 2;
 
         // CAN IDs
         public static final int kPidgeonID = 13;
@@ -25,10 +42,10 @@ public class Constants {
         public static final int kBackRightEncoderId = 1;
 
         // Encoder Offsets (in rotations)
-        public static final double kFrontLeftEncoderOffset = -0.368408203125;
-        public static final double kFrontRightEncoderOffset = 0.462890625;
-        public static final double kBackLeftEncoderOffset = -0.28759765625;
-        public static final double kBackRightEncoderOffset = -0.049072265625;
+        public static final double kFrontLeftEncoderOffset = -0.363037109375;
+        public static final double kFrontRightEncoderOffset = 0.462158203125;
+        public static final double kBackLeftEncoderOffset = -0.287109375;
+        public static final double kBackRightEncoderOffset = -0.04248046875;
 
         // Module Positions
         public static final double kFrontLeftXPos = 13.25;
@@ -78,18 +95,18 @@ public class Constants {
         public static final double kWheelRadius = 2; // in inches
 
         // steer motor gains
-        public static final double steerKP = 19; // 60
-        public static final double steerKI = 0.1; // 0.1
-        public static final double steerKD = 0.6; // 1.4
+        public static final double steerKP = 17; // 17
+        public static final double steerKI = 0.005; // 0.005
+        public static final double steerKD = 0.05; // 0.05
         public static final double steerKS = 0.18328;
         public static final double steerKV = 0.1069225;
         public static final double steerKA = 0.002041125;
 
         // drive motor gains
-        public static final double driveKP = 0.010;
+        public static final double driveKP = 0.01;
         public static final double driveKI = 0.000;
         public static final double driveKD = 0.000;
-        public static final double driveKS = 0.0860;
+        public static final double driveKS = 0.200;
         public static final double driveKV = 0.0134;
     }
 
@@ -110,9 +127,9 @@ public class Constants {
                                                       // friction
         public static final double elevatorkV = 0.00; // manually tuned value - keep at zero
         public static final double elevatorkA = 0.01; // manually tuned value
-        public static final double elevatorkG = 0.15; // found by determining the output necessary to hold at constant
+        public static final double elevatorkG = 25; // found by determining the output necessary to hold at constant
                                                       // height
-        public static final double elevatorkP = 2.40; // manually tuned value
+        public static final double elevatorkP = 10; // manually tuned value
         public static final double elevatorkI = 0.00; // No output for integrated error
         public static final double elevatorkD = 0.05; // manually tuned value
 
@@ -131,15 +148,25 @@ public class Constants {
         // carridge should go to for that level.
         // elevatorBaseHeight is subtracted to find the actual distance the elevator
         // must travel. only edit the constant !!
-        public static final double l1Height = 10 - elevatorBaseHeight;
-        public static final double l2Height = 22 - elevatorBaseHeight;
-        public static final double l3Height = 34 - elevatorBaseHeight;
-        public static final double l4Height = 46 - elevatorBaseHeight;
+        public static final double l1Height = 0 - elevatorBaseHeight;
+        public static final double l2Height = 9 - elevatorBaseHeight;
+        public static final double l3Height = 27 - elevatorBaseHeight;
+        public static final double l4Height = 51 - elevatorBaseHeight;
     }
 
     public static final class Manipulator {
         public static final int shooterMotorID = 16;
         public static final int algaeMotorID = 17;
-        public static final int laserCanID = 18;
+        public static final int frontLaserId = 18;
+        public static final int backLaserId = 19;
+    }
+
+    public static final class AlgaeArm {
+        public static final int angleMotorId = 20;
+        public static final int wheelMotorId = 21;
+        
+        public static final double kP = 0.001;
+        public static final double kI = 0.0;
+        public static final double kD = 0.0;
     }
 }

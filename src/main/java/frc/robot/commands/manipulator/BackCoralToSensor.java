@@ -4,10 +4,10 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants;
 import frc.robot.subsystems.Manipulator;
 
-public class Intake extends Command {
+public class BackCoralToSensor extends Command {
   private Manipulator m_manipulator;
 
-  public Intake(Manipulator manipulator) {
+  public BackCoralToSensor(Manipulator manipulator) {
     this.m_manipulator = manipulator;
     addRequirements(m_manipulator);
   }
@@ -19,13 +19,7 @@ public class Intake extends Command {
 
   @Override
   public void execute() {
-    if(m_manipulator.isCoralAtBackSensor() == 1) {
-      m_manipulator.spinIntakeMotor(0.2);
-    
-    }else{
-      m_manipulator.spinIntakeMotor(.4);
-    }
-    
+    m_manipulator.reverseIntakeMotorSlowly();
   }
 
   @Override
@@ -35,6 +29,6 @@ public class Intake extends Command {
 
   @Override
   public boolean isFinished() {
-    return ((m_manipulator.isCoralAtFrontSensor() == 1) && (m_manipulator.isCoralAtBackSensor() != 1)); 
+    return (m_manipulator.isCoralAtBackSensor() == 1);
   }
 }

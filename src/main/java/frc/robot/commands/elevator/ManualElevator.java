@@ -26,6 +26,13 @@ public class ManualElevator extends Command {
 
   @Override
   public void execute() {
+    double finalSpeed = m_speed.getAsDouble();
+
+    if (Math.abs(finalSpeed) < 0.1) {
+      finalSpeed = 0;
+      
+    }
+
     m_elevator.setManualSpeed(m_speed.getAsDouble());
     SmartDashboard.putNumber("manual elevator speed", m_speed.getAsDouble());
   }

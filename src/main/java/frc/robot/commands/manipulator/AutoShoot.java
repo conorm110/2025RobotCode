@@ -1,15 +1,18 @@
 package frc.robot.commands.manipulator;
 
+import com.ctre.phoenix6.swerve.SwerveRequest;
+
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants;
 import frc.robot.subsystems.Manipulator;
 
-public class Intake extends Command {
+public class AutoShoot extends Command {
   private Manipulator m_manipulator;
+  private SwerveRequest.FieldCentricFacingAngle m_drivetrainTargetAngle;
 
-  public Intake(Manipulator manipulator) {
+  public AutoShoot(Manipulator manipulator, SwerveRequest.FieldCentricFacingAngle drivetrainTargetAngle) {
     this.m_manipulator = manipulator;
-    addRequirements(m_manipulator);
+    this.m_drivetrainTargetAngle = drivetrainTargetAngle;
   }
 
   @Override
@@ -35,6 +38,6 @@ public class Intake extends Command {
 
   @Override
   public boolean isFinished() {
-    return ((m_manipulator.isCoralAtFrontSensor() == 1) && (m_manipulator.isCoralAtBackSensor() != 1)); 
+    return ((m_manipulator.isCoralAtFrontSensor() == 1) && (m_manipulator.isCoralAtBackSensor() != 1));
   }
 }

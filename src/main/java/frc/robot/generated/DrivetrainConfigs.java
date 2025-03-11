@@ -64,7 +64,7 @@ public class DrivetrainConfigs {
 
     // CAN bus that the devices are located on;
     // All swerve devices must share the same CAN bus
-    public static final CANBus kCANBus = new CANBus("", "./logs/example.hoot");
+    public static final CANBus kCANBus = new CANBus("*", "./logs/example.hoot");
 
     public static final LinearVelocity kSpeedAt12Volts = MetersPerSecond.of(Constants.Swerve.linearVelocityAt12V);
     private static final double kCoupleRatio = Constants.Swerve.kCoupleRatio;
